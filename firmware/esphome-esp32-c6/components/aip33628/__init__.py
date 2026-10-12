@@ -2,7 +2,14 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import pins
 from esphome.components import time as time_
+from esphome.components.esp32 import include_builtin_idf_component
 from esphome.const import CONF_ID, CONF_NUMBER, PLATFORM_ESP32
+
+# These ESP-IDF drivers are excluded from ESPHome's default build set but are
+# directly used by aip33628.cpp (GPTimer API and GPIO register definitions).
+# Re-enable them so the generated ESP-IDF src component can resolve the headers.
+IDF_COMPONENT_DEPENDENCIES = ("esp_driver_gptimer", "esp_driver_gpio")
+
 
 CODEOWNERS = ["@misterblack1"]
 ESP_PLATFORMS = [PLATFORM_ESP32]
@@ -64,6 +71,9 @@ CONFIG_SCHEMA = cv.Schema(
 
 
 async def to_code(config):
+    for component in IDF_COMPONENT_DEPENDENCIES:
+        include_builtin_idf_component(component)
+
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
