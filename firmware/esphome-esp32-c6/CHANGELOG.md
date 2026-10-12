@@ -6,3 +6,4 @@
 - Add an independent Home Assistant colon-brightness slider (0–100%).
 - Set the first-boot display brightness to 50% while retaining restored light state.
 - Ignore local `secrets.yaml` and ESPHome build files.
+- Load the custom component from this GitHub branch and check for updates every minute.
