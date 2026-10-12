@@ -20,6 +20,9 @@ esphome:
           id(panel)->set_effect_spread(sp == "Per Digit" ? 1 : sp == "Per LED" ? 2 : 0);
           std::string ef = id(effect_mode).current_option();
           id(panel)->set_effect(ef == "Color Cycle" ? 1 : ef == "Flash" ? 2 : 0);
+          std::string colon_option = id(colon_mode).current_option();
+          id(panel)->set_colon_mode(colon_option == "Off" ? 0 : colon_option == "On" ? 1 : 2);
+          id(panel)->set_colon_brightness(id(colon_brightness).state / 100.0f);
 
 esp32:
   board: esp32-c6-devkitc-1
@@ -188,10 +191,9 @@ aip33628:
   clk2_pin: GPIO19  # driver 2 CLK
   data2_pin: GPIO20 # driver 2 DATA
   time_id: ha_time
-  # Power on defaults. The switches below own both after that, and they
-  # restore their last state, so these only matter for a first ever boot.
+  # Power-on defaults; Home Assistant entities own these at runtime.
   twelve_hour: true
-  blink_colon: true
+  colon_mode: Blink
   # Ceiling on IS[3:0], 0 to 15. Fixed, never varied by content. The stock
   # firmware ran 0xF and drew 404mA doing it. Drop this if the drivers
   # run hotter than you want. See docs/display-map.md.
@@ -203,6 +205,9 @@ light:
     aip33628_id: panel
     name: Display
     restore_mode: RESTORE_DEFAULT_ON
+    initial_state:
+      state: true
+      brightness: 50%
     # Gamma is applied inside the component, because it also has to allow for
     # the 2.5mA floor the drivers cannot go below. Leaving it on here as well
     # would square it.
@@ -253,17 +258,6 @@ switch:
     turn_off_action:
       - lambda: id(panel)->set_twelve_hour(false);
 
-  # Off means a steady colon, not a dark one.
-  - platform: template
-    id: colon_blink
-    name: Blink Colon
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_ON
-    turn_on_action:
-      - lambda: id(panel)->set_blink_colon(true);
-    turn_off_action:
-      - lambda: id(panel)->set_blink_colon(false);
-
 button:
   # Three seconds of every populated LED lit white at half brightness, then
   # back to the time with the settings it had before.
@@ -309,6 +303,18 @@ button:
 # Developer Tools > Actions. Setting either entity redraws immediately and the
 # panel falls back to the time ten seconds later on its own.
 select:
+  - platform: template
+    id: colon_mode
+    name: Colon
+    optimistic: true
+    restore_value: true
+    initial_option: "Blink"
+    options: ["Off", "On", "Blink"]
+    set_action:
+      - lambda: |-
+          std::string option = x;
+          id(panel)->set_colon_mode(option == "Off" ? 0 : option == "On" ? 1 : 2);
+
   # Effects run on the device, not in Home Assistant, so a fade stays smooth
   # and keeps going if the network drops. Every entity here is a normal one,
   # so an automation can drive them, or call the set_effect action to set the
@@ -354,6 +360,21 @@ select:
           id(panel)->show_number((int) id(test_number).state, u, 10000);
 
 number:
+  # Relative colon brightness, independent of the digit brightness.
+  - platform: template
+    name: Colon Brightness
+    id: colon_brightness
+    optimistic: true
+    restore_value: true
+    initial_value: 100
+    min_value: 0
+    max_value: 100
+    step: 5
+    unit_of_measurement: "%"
+    mode: slider
+    set_action:
+      - lambda: id(panel)->set_colon_brightness(x / 100.0f);
+
   # Seconds for one full cycle. For Flash this is one complete on and off.
   - platform: template
     name: Effect Speed

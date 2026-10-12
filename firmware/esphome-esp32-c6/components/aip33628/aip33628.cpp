@@ -219,7 +219,8 @@ void Aip33628Panel::dump_config() {
   ESP_LOGCONFIG(TAG, "  Max current: IS 0x%X, %u.%umA per lit sink", max_current_,
                 IS_MA[max_current_] / 10, IS_MA[max_current_] % 10);
   ESP_LOGCONFIG(TAG, "  Hour format: %s", twelve_hour_ ? "12 hour" : "24 hour");
-  ESP_LOGCONFIG(TAG, "  Colon: %s", blink_colon_ ? "blinking" : "steady");
+  const char *colon = colon_mode_ == 0 ? "off" : colon_mode_ == 1 ? "steady" : "blinking";
+  ESP_LOGCONFIG(TAG, "  Colon: %s", colon);
   ESP_LOGCONFIG(TAG, "  Network: %s", online_ ? "up" : "down");
   const char *fx = effect_ == Effect::CYCLE ? "color cycle"
                    : effect_ == Effect::FLASH ? "flash" : "none";
@@ -350,9 +351,13 @@ void Aip33628Panel::set_light(bool on, float r, float g, float b, float brightne
   apply_colors_();
 }
 
-// Quantize whatever color each block is currently supposed to be. Everything
-// that changes a color goes through here, so there is one place that decides
-// what a block ends up at and one place that marks the panel dirty.
+void Aip33628Panel::set_colon_brightness(float brightness) {
+  colon_brightness_ = clamp(brightness, 0.0f, 1.0f);
+  apply_colors_();
+}
+
+// Quantize each block's current color. All color changes pass through here,
+// so the panel is marked dirty in one place.
 void Aip33628Panel::apply_colors_() {
   // The lamp test outranks every color tier, including a running effect.
   if (mode_ == Mode::LAMP) {
@@ -369,9 +374,12 @@ void Aip33628Panel::apply_colors_() {
       const float *c = pos_set_[blk][seg]  ? pos_rgb_[blk][seg]
                        : digit_set_[blk]   ? digit_rgb_[blk]
                                            : base_rgb_;
-      level_[blk][seg][CH_RED] = duty_level(c[0] * envelope_);
-      level_[blk][seg][CH_GREEN] = duty_level(c[1] * envelope_);
-      level_[blk][seg][CH_BLUE] = duty_level(c[2] * envelope_);
+      const float colon_scale = blk == 1 && (seg == SEG_ANNUN || seg == SEG_ANNUN2)
+                                    ? colon_brightness_
+                                    : 1.0f;
+      level_[blk][seg][CH_RED] = duty_level(c[0] * envelope_ * colon_scale);
+      level_[blk][seg][CH_GREEN] = duty_level(c[1] * envelope_ * colon_scale);
+      level_[blk][seg][CH_BLUE] = duty_level(c[2] * envelope_ * colon_scale);
     }
   }
   dirty_ = true;
@@ -738,9 +746,8 @@ void Aip33628Panel::loop() {
     key = mode_ == Mode::SECONDS ? now.second : now.hour * 60 + now.minute;
   }
 
-  // The colon blinks once a second, so the content changes more often than
-  // the time does. Blinking off means a steady colon, not a dark one.
-  bool colon = blink_colon_ ? ((now_ms / 1000) % 2 == 0) : true;
+  // Mode 0 hides the colon, 1 holds it on, and 2 blinks once per second.
+  bool colon = colon_mode_ == 1 || (colon_mode_ == 2 && (now_ms / 1000) % 2 == 0);
 
   if (!dirty_ && key == last_key_ && colon == last_colon_) return;
   last_key_ = key;
@@ -781,13 +788,14 @@ void Aip33628Panel::loop() {
   }
 
   if (mode_ == Mode::SECONDS) {
-    // Seconds sit where the minutes normally do, behind a colon that stays
-    // steady, so the panel reads as :SS rather than as a bare two digit
-    // number that could be anything. The upper dot still follows the network.
+    // Seconds sit where minutes normally do; the selected colon mode still
+    // controls both dots, and the upper dot follows network status.
     write_digit_(2, (char) ('0' + now.second / 10));
     write_digit_(3, (char) ('0' + now.second % 10));
-    if (online_) write_pos_(1, SEG_ANNUN, true);
-    write_pos_(1, SEG_ANNUN2, true);
+    if (colon) {
+      if (online_) write_pos_(1, SEG_ANNUN, true);
+      write_pos_(1, SEG_ANNUN2, true);
+    }
     render_();
     return;
   }

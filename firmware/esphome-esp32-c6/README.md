@@ -161,7 +161,7 @@ aip33628:
   data2_pin: GPIO20
   time_id: ha_time
   twelve_hour: true
-  blink_colon: true
+  colon_mode: Blink  # Off, On, or Blink
   max_current: 15
 ```
 
@@ -171,17 +171,16 @@ aip33628:
 | `clk2_pin`, `data2_pin` | required | Driver 2 bus, below GPIO32 |
 | `time_id` | none | A time source. Without one the panel shows dashes. |
 | `max_current` | 15 | Ceiling on `IS[3:0]`, 0 to 15 |
-| `twelve_hour` | true | 12h or 24h. Power on default, the switch owns it |
-| `blink_colon` | true | Power on default, the switch owns it after that |
+| `twelve_hour` | true | 12h or 24h. Power-on default; HA switch controls it |
+| `colon_mode` | Blink | `Off`, `On`, or `Blink`; HA select controls it |
 
-The light platform takes an `aip33628_id` and is otherwise a normal RGB light.
+The light platform takes an `aip33628_id` and is otherwise a normal RGB light. Its first-boot default is on at 50%; saved light state is restored. The HA `Colon Brightness` number adjusts colon brightness independently of the digits.
 
 ## What it does
 
 - Shows the time
-- Colon blinks once a second, and the upper dot drops while the network is
-  down, so a glance at the panel says whether the time is still being kept
-  accurately.
+- Colon mode is selectable as off, steady on, or blinking; colon brightness
+  is independently adjustable. The upper dot drops while the network is down.
 - Four dashes while there is no valid time. The board has no RTC, so a cold
   boot with no network means no time at all until the network comes back.
 - One RGB "light" entity for the whole display, plus per digit color, per LED
