@@ -356,6 +356,11 @@ void Aip33628Panel::set_colon_brightness(float brightness) {
   apply_colors_();
 }
 
+void Aip33628Panel::set_am_brightness(float brightness) {
+  am_brightness_ = clamp(brightness, 0.0f, 1.0f);
+  apply_colors_();
+}
+
 // Quantize each block's current color. All color changes pass through here,
 // so the panel is marked dirty in one place.
 void Aip33628Panel::apply_colors_() {
@@ -374,12 +379,14 @@ void Aip33628Panel::apply_colors_() {
       const float *c = pos_set_[blk][seg]  ? pos_rgb_[blk][seg]
                        : digit_set_[blk]   ? digit_rgb_[blk]
                                            : base_rgb_;
-      const float colon_scale = blk == 1 && (seg == SEG_ANNUN || seg == SEG_ANNUN2)
-                                    ? colon_brightness_
-                                    : 1.0f;
-      level_[blk][seg][CH_RED] = duty_level(c[0] * envelope_ * colon_scale);
-      level_[blk][seg][CH_GREEN] = duty_level(c[1] * envelope_ * colon_scale);
-      level_[blk][seg][CH_BLUE] = duty_level(c[2] * envelope_ * colon_scale);
+      float position_scale = 1.0f;
+      if (blk == 1 && (seg == SEG_ANNUN || seg == SEG_ANNUN2))
+        position_scale = colon_brightness_;
+      else if (blk == 0 && seg == SEG_ANNUN)
+        position_scale = am_brightness_;
+      level_[blk][seg][CH_RED] = duty_level(c[0] * envelope_ * position_scale);
+      level_[blk][seg][CH_GREEN] = duty_level(c[1] * envelope_ * position_scale);
+      level_[blk][seg][CH_BLUE] = duty_level(c[2] * envelope_ * position_scale);
     }
   }
   dirty_ = true;

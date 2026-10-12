@@ -174,13 +174,14 @@ aip33628:
 | `twelve_hour` | true | 12h or 24h. Power-on default; HA switch controls it |
 | `colon_mode` | Blink | `Off`, `On`, or `Blink`; HA select controls it |
 
-The light platform takes an `aip33628_id` and is otherwise a normal RGB light. Its first-boot default is on at 50%; saved light state is restored. The HA `Colon Brightness` number adjusts colon brightness independently of the digits.
+The light platform takes an `aip33628_id` and is otherwise a normal RGB light. Its first-boot default is on at 50%; saved light state is restored. The HA `Colon Brightness` and `AM Brightness` numbers adjust those indicators independently of the digits.
 
 ## What it does
 
 - Shows the time
-- Colon mode is selectable as off, steady on, or blinking; colon brightness
-  is independently adjustable. The upper dot drops while the network is down.
+- Colon mode is selectable as off, steady on, or blinking; colon and AM
+  indicator brightness are independently adjustable. The upper colon dot drops
+  while the network is down.
 - Four dashes while there is no valid time. The board has no RTC, so a cold
   boot with no network means no time at all until the network comes back.
 - One RGB "light" entity for the whole display, plus per digit color, per LED

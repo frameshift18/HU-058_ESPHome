@@ -111,6 +111,7 @@ class Aip33628Panel : public Component {
     dirty_ = true;
   }
   void set_colon_brightness(float brightness);
+  void set_am_brightness(float brightness);
   // Offline drops the upper colon dot, so a glance at the panel says whether
   // the time is still being kept honest. Driven from the wifi triggers in
   // clock.yaml rather than by including the wifi component here.
@@ -191,6 +192,7 @@ class Aip33628Panel : public Component {
   bool twelve_hour_{true};
   uint8_t colon_mode_{2};  // 0 off, 1 steady on, 2 blink
   float colon_brightness_{1.0f};  // relative to digit brightness, 0 to 1
+  float am_brightness_{1.0f};     // relative to digit brightness, 0 to 1
   bool online_{false};
 
   // Which positions are lit, before color is applied.

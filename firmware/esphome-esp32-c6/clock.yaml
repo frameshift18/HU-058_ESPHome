@@ -23,6 +23,7 @@ esphome:
           std::string colon_option = id(colon_mode).current_option();
           id(panel)->set_colon_mode(colon_option == "Off" ? 0 : colon_option == "On" ? 1 : 2);
           id(panel)->set_colon_brightness(id(colon_brightness).state / 100.0f);
+          id(panel)->set_am_brightness(id(am_brightness).state / 100.0f);
 
 esp32:
   board: esp32-c6-devkitc-1
@@ -364,6 +365,21 @@ select:
           id(panel)->show_number((int) id(test_number).state, u, 10000);
 
 number:
+  # Relative AM indicator brightness, independent of the digit brightness.
+  - platform: template
+    name: AM Brightness
+    id: am_brightness
+    optimistic: true
+    restore_value: true
+    initial_value: 100
+    min_value: 0
+    max_value: 100
+    step: 5
+    unit_of_measurement: "%"
+    mode: slider
+    set_action:
+      - lambda: id(panel)->set_am_brightness(x / 100.0f);
+
   # Relative colon brightness, independent of the digit brightness.
   - platform: template
     name: Colon Brightness
